@@ -5,15 +5,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 
+	grpc "github.com/micro/go-grpc"
+	micro "github.com/micro/go-micro"
 	pb "github.com/nasuku/learn/micro/consignment-service/proto/consignment"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-)
-
-const (
-	port = ":50051"
 )
 
 // IRepository is interface
@@ -42,30 +37,37 @@ type service struct {
 	repo IRepository
 }
 
-func (s *service) CreateConsignment(ctx context.Context, req *pb.Consignment) (*pb.Response, error) {
+func (s *service) CreateConsignment(ctx context.Context, req *pb.Consignment, resp *pb.Response) error {
 	c, err := s.repo.Create(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &pb.Response{Created: true, Consignment: c}, nil
+	resp.Created = true
+	resp.Consignment = c
+	return nil
 }
-func (s *service) GetConsignments(ctx context.Context, req *pb.GetRequest) (*pb.Response, error) {
-	return &pb.Response{Consignments: s.repo.GetAll()}, nil
+func (s *service) GetConsignments(ctx context.Context, req *pb.GetRequest, resp *pb.Response) error {
+	resp.Consignments = s.repo.GetAll()
+	return nil
 }
 
 func main() {
 	repo := &Repository{}
 
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
-	}
-	s := grpc.NewServer()
+	// Create a new service. Optionally include some options here.
+	srv := grpc.NewService(
 
-	pb.RegisterShippingServiceServer(s, &service{repo})
-	reflection.Register(s)
+		// This name must match the package name given in your protobuf definition
+		micro.Name("go.micro.srv.consignment"),
+		micro.Version("latest"),
+	)
+
+	// Init will parse the command line flags.
+	srv.Init()
+
+	pb.RegisterShippingServiceHandler(srv.Server(), &service{repo})
 	fmt.Println("Ready to serve")
-	if err := s.Serve(lis); err != nil {
+	if err := srv.Run(); err != nil {
 		log.Fatalf("failed to serve : %v", err)
 	}
 }
