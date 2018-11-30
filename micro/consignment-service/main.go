@@ -19,6 +19,7 @@ const (
 // IRepository is interface
 type IRepository interface {
 	Create(*pb.Consignment) (*pb.Consignment, error)
+	GetAll() []*pb.Consignment
 }
 
 // Repository is implementation of repo
@@ -32,6 +33,11 @@ func (r *Repository) Create(c *pb.Consignment) (*pb.Consignment, error) {
 	return c, nil
 }
 
+// GetAll returns all consignments
+func (r *Repository) GetAll() []*pb.Consignment {
+	return r.consignments
+}
+
 type service struct {
 	repo IRepository
 }
@@ -42,6 +48,9 @@ func (s *service) CreateConsignment(ctx context.Context, req *pb.Consignment) (*
 		return nil, err
 	}
 	return &pb.Response{Created: true, Consignment: c}, nil
+}
+func (s *service) GetConsignments(ctx context.Context, req *pb.GetRequest) (*pb.Response, error) {
+	return &pb.Response{Consignments: s.repo.GetAll()}, nil
 }
 
 func main() {
